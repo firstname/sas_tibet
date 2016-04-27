@@ -1,0 +1,69 @@
+%macro linjie(datain,fs);                                                                                                                                        
+proc means data=&datain. noprint nmiss;                                                                                                                          
+class minzu klmc sxlbmc;                                                                                                                                         
+var  &fs.;                                                                                                                                                       
+output out=datasets ;                                                                                                                                            
+run;                                                                                                                                                             
+                                                                                                                                                                 
+proc sort data=datasets;                                                                                                                                         
+by  minzu klmc sxlbmc ;                                                                                                                                          
+run;                                                                                                                                                             
+                                                                                                                                                                 
+proc transpose data=datasets out=out_data;                                                                                                                       
+                                                                                                                                                                 
+by  minzu klmc sxlbmc;                                                                                                                                           
+                                                                                                                                                                 
+var  &fs.;                                                                                                                                                       
+id _stat_;                                                                                                                                                       
+run;                                                                                                                                                             
+                                                                                                                                                                 
+data final (keep= minzu klmc sxlbmc mean ljfs linjie);                                                                                                           
+        set out_data;                                                                                                                                            
+        ljfs=mean-5;                                                                                                                                            
+        linjie=compress(sxlbmc)||"_"||"临界生";                                                                                                                  
+        if minzu^="" and klmc^="" and sxlbmc^="" and sxlbmc^="4未上线或其它";                                                                                    
+        label minzu="民族" klmc="科类" sxlbmc="上线" mean="&fs.上界" ljfs="&fs.下界" linjie="&fs.临界生";                                                                    
+run;                                                                                                                                                             
+*proc print data=final label;                                                                                                                                     
+*run;                                                                                                                       
+data zf;                                                                                                                                                         
+        set &datain.;                                                                                                                                            
+run;                                                                                                                                                             
+proc sql;                                                                                                                                                        
+        create table ljs as                                                                                                                                      
+        select a.* , b.mean , b.ljfs, b.linjie                                                                                                                   
+        from  zf a, final b                                                                                                                                      
+        where a.minzu=b.minzu and a.klmc=b.klmc and a.sxlbmc=b.sxlbmc and mean>a.&fs.>ljfs                                                                         
+        order by &fs. descending                                                                                                                                      
+;                                                                                                                                                                
+quit;   
+
+proc tabulate data=ljs;
+	
+	class minzu klmc linjie;
+
+	table all="全体" minzu=""*klmc="",linjie=""*n="";
+
+	title "临界生统计";
+
+run;  
+
+proc tabulate data=ljs;
+	
+	class dqmc zxmc linjie;
+
+	table all="全体" dqmc=""*zxmc="",linjie=""*n="";
+
+	title "临界生统计";
+
+run;                                                                                                                                                       
+proc print data=ljs label noobs ;   
+
+var zkzh dqmc zxmc &fs. linjie;  
+
+title "临界生名单";                                                                                                                                 
+run;    
+
+                                      
+%mend;   
+*%linjie(tibet.zf,yw);

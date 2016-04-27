@@ -1,0 +1,131 @@
+%macro item_mean(score_data,xiaoti,out_data,dif_lev);                                                                                                                    
+proc means data=&score_data noprint;    
+
+class &dif_lev;                                                                                                                        
+var &xiaoti;                                                                                                                                                     
+output out=datasets ;                                                                                                                                            
+run;                                                                                                                                                             
+                                                                                                                                                                 
+proc transpose data=datasets out=&out_data; 
+
+by  &dif_lev.;
+                                                                                                                     
+var &xiaoti;                                                                                                                                                     
+id _stat_;                                                                                                                                                       
+run;                                                                                                                                                             
+%mend; 
+
+%macro split_group(indata2,totalscore);                                                                                                  
+proc sort data=&indata2;                                                                                                                
+         by descending &totalscore;     ******************************************* 按照总分排序，方便寻找高低分组界限 **;              
+run;                                                                                                                                    
+data &indata2;                                                                                                                          
+        set &indata2 end=lasttrue;                                                                                                      
+        id=_n_;                                                                                                                         
+        high=0;                                                                                                                         
+        low=0;                                                                                                                          
+        if lasttrue then call symput("num_data",id);                                                                                    
+run;                                                                                                                                    
+data  &indata2;                                                                                                                         
+        set &indata2 ;                                                                                                                  
+        if id <= int("&num_data."*0.27) then high=1;                                                                                    
+        if id >= int("&num_data."*0.73) then low=1;                                                                                     
+run;                                                                                                                                    
+data high;                                                                                                                              
+        set &indata2;                                                                                                                   
+        if high=1;        ************************ 高分组学生成绩表 **;                                                                 
+run;                                                                                                                                    
+data low;                                                                                                                               
+        set &indata2;                                                                                                                   
+        if low=1;          ************************ 低分组学生成绩表**;                                                                 
+run;                                                                                                                                    
+%mend;     
+
+
+***************************************************************知识、能力;                                                                                                                                                                                                                 
+%macro item_analyse(a_score,zf,xiaoti,b_items,fenlei,fenlei_label); 
+                                                                        
+%split_group(&a_score.,&zf.);                                                                                                                                    
+%item_mean(&a_score.,&xiaoti.,tmp_all,); 
+
+%item_mean(&a_score.,&xiaoti.,tmp_all2,&fenlei.);
+                                                                                                                         
+%item_mean(high,&xiaoti.,tmp_high,);                                                                                                                              
+%item_mean(low,&xiaoti.,tmp_low,);                                                                                                                                
+                                                                                                                                                                 
+proc sql; ************* ;                                                                                                                                                
+        create table nandu as                                                                                                                                   
+        select a._name_ ,a.n, a.mean , a.max , b.tihao,b.timing, b.fenzhi,b.fenzhi/sum(b.fenzhi)*100 as fzbz, b.zhishi, b.nengli ,b.yugunandu ,                                                    
+                a.mean/b.fenzhi as sjnandu , (c.mean-d.mean)/ b.fenzhi as qufendu                                                                            
+        from  tmp_all a, &b_items  b ,  tmp_high c, tmp_low d                                                                                                    
+        where upcase(trim(a._name_))=upcase(trim(c._name_))=upcase(trim(d._name_))=upcase(trim(b.tihao));                                                      
+quit;                                                                                                                                                            
+proc sql;  ************* 按照a.&fenlei.分别统计;                                                                                                                                                      
+        create table nandu2 as                                                                                                                                   
+        select a.&fenlei.,a.n, a._name_ , a.mean , a.max , b.tihao,b.timing, b.fenzhi,b.fenzhi/sum(b.fenzhi)*100 as fzbz, b.zhishi, b.nengli ,b.yugunandu ,                                                    
+                a.mean/b.fenzhi as sjnandu , (c.mean-d.mean)/ b.fenzhi as qufendu                                                                            
+        from  tmp_all2 a, &b_items  b ,  tmp_high c, tmp_low d                                                                                                    
+        where upcase(trim(a._name_))=upcase(trim(c._name_))=upcase(trim(d._name_))=upcase(trim(b.tihao))
+	group by &fenlei.
+	;                                                      
+quit;  
+
+%macro outprint(datain);                                                                                                                          
+data zhishi;                                                                                                                             
+set &datain.; 
+
+if  &fenlei.="" then &fenlei.="ALL";                                                                                                                                                                                                                 
+ndlev='中等';                                                                                                                           
+if sjnandu <0.3 then ndlev= '较难';                                                                                                       
+if sjnandu >0.7 then ndlev= '较易';                                                                                                       
+qfdlev='中等';                                                                                                                          
+if qufendu <0.2 then qfdlev= '较低';                                                                                                    
+if qufendu >0.4 then qfdlev= '较高';                                                                                                                                                                                                                      
+run;
+proc sort data=zhishi;
+	by  &fenlei. tihao;
+run;                                                                                                                                                               
+proc print data=zhishi noobs label;                                                                                                                              
+        var  &fenlei. n timing  fenzhi fzbz mean yugunandu sjnandu ndlev qufendu qfdlev zhishi nengli;                                                                                 
+        label &fenlei.="&fenlei_label." n="人数" timing="题目" fenzhi="满分值" fzbz="分值比重" mean="平均分" yugunandu="预估难度" sjnandu="实际难度"                                                       
+        qufendu="区分度"     zhishi="知识" nengli="能力" ndlev="难度级别" qfdlev="区分度级别"
+;                                                                                                    
+        title   "&fenlei_label. 各小题得分率";                                                                                                                            
+        footnote    "题目包括: &xiaoti.";                                                                                                                                        
+run;                                                                                                                                                             
+                                                                                                                                                                 
+proc tabulate data=zhishi;                                                                                                                                       
+        class &fenlei. zhishi ndlev qfdlev;                                                                                                                                         
+        var sjnandu fenzhi fzbz;                                                                                                                                      
+         table                                                                                                                                                   
+       &fenlei.="&fenlei_label.:",(  zhishi=' ' all )  ,    (sjnandu=' '* mean)  (fenzhi=' '* sum='分值') 
+
+	 (fzbz=' '*sum='分值比重') (fzbz=' '* n) (fzbz=' '*pctn) 
+
+	 (ndlev='各难度题目数量'*n=' ')  (qfdlev='各区分度题目数量'*n=' ')                                                                                               
+        / box="知识点"  rts=25 misstext="无";                                                                                                                                    
+     keylabel all='总计' mean='得分率' n='题目数量'  pctn='题数比重';                                                                                                                            
+     label ;                                                                                                                              
+        title   " &fenlei_label.各知识点得分率";                                                                                                                           
+        footnote    "题目包括: &xiaoti.";                                                                                                                                        
+run;                                                                                                                                                             
+                                                                                                                                                                 
+proc tabulate data=zhishi;                                                                                                                                       
+        class &fenlei. nengli ndlev qfdlev;                                                                                                                                         
+        var sjnandu fenzhi fzbz;                                                                                                                                         
+         table                                                                                                                                                   
+       &fenlei.="&fenlei_label.:",( nengli=' ' all  )  ,    (sjnandu=' '* mean)  (fenzhi=' '* sum='分值')  (fzbz=' '*(sum='分值比重'  n pctn))                                                                                                    
+        
+
+	 (ndlev='各难度题目数量'*n=' ')  (qfdlev='各区分度题目数量'*n=' ')                                                                                               
+       / box="能力"  rts=25 misstext="无";                                                                                                                                    
+     keylabel all='总计' mean='得分率' n='题目数量' sum='分值' pctn='题数占比';                                                                                                                            
+     label ;                                                                                                                              
+        title   "&fenlei_label. 各能力得分率";                                                                                                                             
+        footnote    "题目包括: &xiaoti.";                                                                                                                                     
+run;                                                                                                                        %mend;    
+%outprint(nandu);
+%outprint(nandu2);                                     
+%mend;                                                                                                                      
+*********example;                                     
+*%item_analyse(test.score,zf,xzt1 xzt2 xzt3 zgt1 zgt2 zgt3,test.items,class,班级);

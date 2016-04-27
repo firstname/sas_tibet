@@ -1,0 +1,41 @@
+*********************************************
+*         Often Used SAS Programs           *
+*                 by YangChen               *
+*               01/06/2015                  *
+*********************************************;
+dm'log;clear;output;clear';
+options noxwait nodate nonumber/* nocenter  nolabel nonotes errors=0 */ ps=32767 ls=150;
+
+
+
+
+
+
+
+************* create file directory ;
+options noxwait;
+%macro cre_dir(outpath);
+data _null_;
+         command="md &outpath.";
+         call system(command);
+run;
+%mend;
+*************  example;                                                                                                     /*
+%cre_dir(D:\sasprogram\data\lib);
+*/
+
+
+
+
+
+
+
+
+************* create lib ;
+%macro cre_lib(lib,libpath);
+libname &lib. "&libpath.";
+run;
+%mend;
+*************  example;                                                                                                     /*
+%cre_lib(test,D:\sasprogram\data\lib);
+*/

@@ -1,0 +1,19 @@
+**************** n mean std max min sum pctn     KURT   SKEW                                                                                 
+   CV  P1 P90  P5 P95 P10 P99  P25  P50  P75  QRANGE  ******************;   
+
+%macro effective_score(course,sxlb,kelei,score,mz); 
+                                                               
+proc tabulate data = &course ;                                                                                                               
+     class &sxlb. &kelei. &mz.;  
+                                                                                                      
+     var &score ;                                                                                                                              
+     table   (&mz.=" " * &kelei.=" " * &sxlb.=" "), (&score="")* (mean =" ") / box="上线类别*有效分" misstext="无" ;
+ 
+                                                                                                                
+title "上线类别*有效分"; 
+                                                                                   
+run; 
+
+%mend;
+
+*%effective_score(tibet.zf,sxlbmc,klmc,score,minzu); 

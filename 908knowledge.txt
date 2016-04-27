@@ -1,0 +1,176 @@
+                goptions reset= all;
+                goptions device= png;
+                goptions ftext=none;
+%macro knowledge(course,items,score,coursename,leibie);
+proc format;
+value five
+0.1-5.9='1~5'
+6-10.9="6~10"
+11-15.9="11~15"
+16-20.9="16~20"
+21-25.9="21~25"
+26-30.9="26~30"
+31-35.9="31~35"
+36-40.9="36~40"
+41-45.9="41~45"
+46-50.9="46~50"
+51-55.9="51~55"
+56-60.9="56~60"
+61-65.9="61~65"
+66-70.9="66~70"
+71-75.9="71~75"
+76-80.9="76~80"
+81-85.9="81~85"
+86-90.9="86~90"
+91-95.9="91~95"
+96-100.9="96~100"
+101-105.9="101~105"
+106-110.9="106~110"
+111-115.9="111~115"
+116-120.9="116~120"
+121-125.9="121~125"
+126-130.9="126~130"
+131-135.9="131~135"
+136-140.9="136~140"
+141-145.9="141~145"
+146-150.9="146~150"
+151-155.9="151~155"
+156-160.9="156~160"
+161-165.9="161~165"
+166-170.9="166~170"
+171-175.9="171~175"
+176-180.9="176~180"
+181-185.9="181~185"
+186-190.9="186~190"
+191-195.9="191~195"
+196-200.9="196~200"
+201-205.9="201~205"
+206-210.9="206~210"
+211-215.9="211~215"
+216-220.9="216~220"
+221-225.9="221~225"
+226-230.9="226~230"
+231-235.9="231~235"
+236-240.9="236~240"
+241-245.9="241~245"
+246-250.9="246~250"
+251-255.9="251~255"
+256-260.9="256~260"
+261-265.9="261~265"
+266-270.9="266~270"
+271-275.9="271~275"
+276-280.9="276~280"
+281-285.9="281~285"
+286-290.9="286~290"
+291-295.9="291~295"
+296-300.9="296~300"
+;
+run;
+proc sql;
+        create table zsd as
+        select distinct &leibie.
+        from &items.
+;
+quit;
+data _null_;
+        set zsd end=thelast;
+        if thelast then call symput("num_of_zsd",_n_);
+run;
+
+%do i=1 %to &num_of_zsd.+0;
+        data _null_;
+                set zsd;
+                if _n_=&i. then call symput("name_of_zsd",compress(&leibie.));
+        run;
+        data tmp;
+                set &items.;
+                if compress(&leibie.)=compress("&name_of_zsd.");
+                put "the loop is: &i. and the zsd is: &name_of_zsd.";
+        run;
+        data _null_;
+                set tmp end=thelast;
+                length zsd $100;
+                retain zsd;
+                retain zfz;
+                if _n_ =1 then do;
+                 zfz = fenzhi;
+                 zsd= tihao;
+                end;
+                else  do;
+                zfz = zfz + fenzhi;
+                zsd = catx(" ", zsd ,tihao );
+                end;
+                if thelast  then call symput("name_of_item",zsd);
+                if thelast  then call symput("sum_of_fenzhi",compress(zfz));
+        run;
+
+        %if &i. = 1 %then %do;
+        data &score.;
+                set &course.;
+                zsd_&i. = sum ( of &name_of_item.)    ;
+                zfz_&i. = compress( &sum_of_fenzhi.) + 0 ;
+                label  zsd_&i. = "知识点&i.&name_of_zsd.得分"
+                       zfz_&i. = "知识点&i.满分值" ;
+        run;
+        proc tabulate data=&score.;
+                class  zsd_&i. &score.;
+                table  &score.= "&coursename." ,zsd_&i. * n='';
+                format   zsd_&i. five. &score. five.;
+                run;
+
+        proc gplot data=&score.;
+                plot  zsd_&i. * &score./ ctext= blue;
+                symbol   i=none  v=plus c=black ;
+                label &score. = "&coursename."
+                      zsd_&i. = ("满分:&sum_of_fenzhi." )  ;
+                title "&i.&name_of_zsd.";
+        run;quit;
+        %end;
+        %else %do;
+        data &score.;
+                set &score.;
+                zsd_&i. = sum ( of &name_of_item.)    ;
+                zfz_&i. = compress( &sum_of_fenzhi.)  + 0 ;
+                label  zsd_&i. = "知识点&i.&name_of_zsd.得分"
+                       zfz_&i. = "知识点&i.满分值" ;
+        run;
+        proc tabulate data=&score.;
+                class  zsd_&i. &score.;
+                table  &score.= "&coursename." ,zsd_&i. * n='';
+                format   zsd_&i. five. &score. five.;
+                run;
+        proc gplot data=&score.;
+                plot  zsd_&i. * &score./ ctext= blue;
+                symbol   i=none  v=plus c=black ;
+                label &score. = "&coursename."
+                      zsd_&i. = ("满分:&sum_of_fenzhi." )  ;
+                title "&i.&name_of_zsd.";
+        run;  quit;
+        %end;
+
+%end;
+%mend;
+*%knowledge(tibet.yw, tibet.yw_items, yw, 语文, zhishi);
+
+
+
+
+/*
+data a;
+do x=1 to 10;
+output;
+end;
+run;
+
+data ret;
+set a;
+retain r;
+if x=1 then r=99;
+else r=r+x;
+run;
+
+data no_ret;
+set a;
+if x=1 then nr=99;
+run;
+  */

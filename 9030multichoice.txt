@@ -1,0 +1,144 @@
+************************************选项分析 *******************************;                                               **************** multichoice;                                                                                                                               
+                                                                                                                                                            
+%macro multichoice2(indata,xzt,xzt_num,fenlei,fenlei_label);                                                                                                           
+%do i=1 %to &xzt_num.;                                                                                                                                              
+data tmp;                                                                                                                                                   
+        set &indata. end=ttt;                                                                                                                               
+        id=_n_;                                                                                                                                             
+        oldname="&xzt.";                                                                                                                                
+        subname=kscan(oldname,&i.,' ');                                                                                                                     
+        if ttt then call symput('itit',trim(subname));                                                                                                      
+        output;                                                                                                                                             
+run;                                                                                                                                                        
+data tmp&i.(keep= id subname itemabc);                                                                                                            
+        set tmp;                                                                                                                                            
+        itemabc=&itit. ;                                                                                                                                    
+run;                                                                                                                                                        
+                                                                                                                                                            
+      %if &i.=1 %then %do;                                                                                                                                  
+        data  outdata;                                                                                                                                      
+                set tmp&i.;                                                                                                                                 
+        run;                                                                                                                                                
+        %end;                                                                                                                                               
+        %else %do;                                                                                                                                          
+        data  outdata;                                                                                                                                      
+                set  outdata tmp&i.;                                                                                                        by id;                
+        run;                                                                                                                                                
+        %end;                                                                                                                                               
+                                                                                                                                                            
+&i.+1;                                                                                                                                                      
+%end;                                                                                                                                                       
+*proc print data= outdata;
+
+ run;                                                                            
+                                                                                                                                             /*                                                        
+proc tabulate data = outdata ;
+                                                                                                                             
+     class  &fenlei. subname itemabc ;
+                                                                                                                     
+     table &fenlei.="&fenlei_label.:",(subname="题目"),itemabc=""*(n pctn='百分比')
+                                                                                        
+        /  misstext="无" row=float ;
+                                                                                                                                                                                                                       
+     keylabel all="总计" n="人数" ;
+                                                                                                                                                                                                                                                        
+     title '选项分析';
+                                                                                                       
+footnote    " ";                                 
+run; 
+                                                                                                                     
+
+
+ODS PATH RESET;                              
+
+ODS PATH (PREPEND) WORK.Templat(UPDATE) ; 
+
+proc template;
+
+ edit  Base.Freq.CrossTabFreqs;
+
+ edit TotalPercent;
+
+      header = "Tot Pct";
+
+      format = 6.2;
+
+      label = "Percent of Total Frequency";
+
+      print;
+
+   end;
+
+
+ edit  Percent;
+
+      header = "Percent";
+
+      format = 6.2;
+
+      label = "Percent of Two-Way Table Frequency";
+
+      print;
+
+   end;
+
+
+   edit  RowPercent;
+
+      header = "Row Pct";
+
+      format = 6.2;
+
+      label = "Percent of Row Frequency";
+
+      print;
+
+   end;
+
+
+  edit  ColPercent;
+
+      header = "Col Pct";
+
+      format = 6.2;
+
+      label = "Percent of Column Frequency";
+
+      print;
+
+   end;
+
+
+   edit CumColPercent;
+
+      header = %nrstr("Cumulative Col%%");
+
+      format = 6.2;
+
+      label = "Cumulative Percent of Column Frequency";
+
+      print;
+
+   end;
+
+end;
+
+run;
+
+*/        
+
+proc freq data = outdata  ;
+    
+
+	by &fenlei.;                                                                                                                         
+     tables   subname*itemabc/ nopercent nocol ;
+ 
+
+	label subname="题目" itemabc="选项" &fenlei.="&fenlei_label."; 
+
+     title "&fenlei_label.选项分析";
+                                                                                                       
+footnote    " "; 
+run;                                                                                                                        
+%mend;                             
+*%multichoice2(test.score,xx1 xx2 xx3,3,class,班级);     

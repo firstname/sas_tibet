@@ -1,0 +1,86 @@
+**************** n mean std max min sum pctn     KURT   SKEW
+   CV  P1 P90  P5 P95 P10 P99  P25  P50  P75  QRANGE  ******************;
+                goptions reset= all;
+                goptions device= png;
+                goptions ftext=none;
+
+%macro basic_analyse(course,fenlei1,fl_label1,score);
+
+/*
+proc tabulate data = &course ;
+     class &fenlei1 ;
+
+     var &score ;
+     table    (all="全体"   &fenlei1=" " ),( &score=' ')*(n mean std min max  q1 p50 q3  kurt skew )
+     / box="&fl_label1";
+     label &fenlei1="&fl_label1" ;
+
+     keylabel  n="人数" pctn=" 百分比"  mean="平均分" std="标准差" min="最低分" max="最高分"
+        q1="第一四分位数" p50="中位数" q3="第三四分位数"  kurt="峰度" skew="偏度";
+        title "基本指标";
+        run;
+*/
+proc means data=&course. noprint  MISSING /*nonobs
+ALPHA, CHARTYPE, CLASSDATA, CLM, COMPLETETYPES, CSS, CV, DATA, DESCEND, DESCENDING, DESCENDTYPES, EXCLNPWGT,
+              EXCLNPWGTS, EXCLUSIVE, FW, IDMIN, KURTOSIS, LCLM, MAX, MAXDEC,
+ MEAN, MEDIAN, MIN, MISSING, N, NDEC, NMISS, NONOBS, NOPRINT, NOTHREADS,
+              NOTRAP, NWAY, ORDER, P1, P10, P25, P5, P50, P75, P90, P95, P99,
+ PCTLDEF, PRINT, PRINTALL, PRINTALLTYPES, PRINTIDS, PRINTIDVARS, PROBT,
+              Q1, Q3, QMARKERS, QMETHOD, QNTLDEF, QRANGE, RANGE, SKEWNESS,
+ STDDEV, STDERR, SUM, SUMSIZE, SUMWGT, T, THREADS, UCLM, USS, VAR, VARDEF*/ ;
+
+        class &fenlei1;
+        var  &score.;
+        output out=jiben  mean= min= max= stddev= n= /autoname;
+        run;
+proc sort data=jiben;
+        by descending &score._mean ;
+        run;
+data jiben2;
+        set jiben end=eeend;
+        cv=&score._stddev/&score._mean;
+        if  &fenlei1.=" "  then &fenlei1.="全体";
+        ordered=trim(_n_)||&fenlei1.;
+        order=_n_;
+        if order=1 then do;
+                call symput('biggest_name',compress(&fenlei1.));
+                call symput('biggest_mean',compress(round(&score._mean,0.01)));
+                call symput('biggest_cv',compress(round(cv,0.01)));
+        end;
+        if eeend then do;
+                call symput('smallest_name',compress(&fenlei1.));
+                call symput('smallest_mean',compress(round(&score._mean,0.01)));
+                call symput('smallest_cv',compress(round(cv,0.01)));
+        end;
+        run;
+
+proc print data=jiben2 noobs label ;
+        var order &fenlei1. &score._mean  &score._stddev  &score._min &score._max cv _freq_;
+        label
+         order = "排序"
+         &fenlei1.="&fl_label1."
+         &score._mean="平均分"
+         &score._stddev="标准差"
+         &score._min="最低分"
+         &score._max="最高分"
+         cv="差异系数"
+         _freq_="人数";
+        title FONT=Arial JUSTIFY=center HEIGHT=16pt BCOLOR='#C0C0C0' COLOR=Black BOLD
+        "&fl_label1.--基本指标--按照平均分 \ 降序排列";
+        title2 FONT=Arial JUSTIFY=LEFT HEIGHT=12pt BCOLOR='#C0C0C0' COLOR=OLIVE
+        "平均分最高的&fl_label1.是&biggest_name.，其平均分为：&biggest_mean.，差异系数为：&biggest_cv.。";
+        title3 FONT=Arial JUSTIFY=LEFT HEIGHT=12pt BCOLOR='#C0C0C0' COLOR=MAROON
+        "平均分最低的&fl_label1.是&smallest_name.，其平均分为：&smallest_mean.，差异系数为：&smallest_cv.。";
+        run;
+
+        proc gplot data=jiben2;
+                plot  &score._mean * ordered ;
+                symbol I=join V=star CI=Red CV=DodgerBlue CO=Green ;
+                label &score._mean =  "平均分"
+                      ordered= "&fl_label1.";
+                title FONT=Arial JUSTIFY=center HEIGHT=12pt BCOLOR='#C0C0C0' COLOR=LILAC BOLD
+                "&fl_label1.--平均分";
+        run;quit;
+
+%mend;
+*%basic_analyse(test.score,city,地区,score);

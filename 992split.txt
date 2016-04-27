@@ -1,0 +1,168 @@
+************* split variable seperated by comma *************;   
+* 1 ************ output character type;   
+%macro split_comma(indata,outdata,oldname,prename); 
+data &indata.;    
+        set &indata.;
+	id=_N_;
+run;
+data tmp;    
+        set &indata.;
+        i=1;     
+        do while (kscan(&oldname.,i,',' )^=''); *notice the comma is in half charecter',' or in full',' ;  
+        subname=kscan(&oldname.,i,',');  
+        output;    
+        i+1;   
+        end;  
+run;       
+proc transpose data=tmp  out=want (drop=_name_) prefix=&prename; **if there is no (drop=_name_),then the out will contain the before variable name;  
+  var subname;            
+  by id;       *** there must be a distinct 'id';   
+run;               
+data &outdata.;      
+      merge &indata want;  
+      by id;             
+run;                       
+*proc print data= &outdata.;title "splitted1 &oldname. by comma"; run; 
+*****method two; 
+*data splited2;  
+*      set &indata.;
+*        v1=kscan(&oldname.,1,',');    
+*        v2=kscan(&oldname.,2,',');  
+*        v3=kscan(&oldname.,3,',');  
+*        *put _all_;            
+*run;                         
+*proc print data= splited2;title "splitted2 &oldname. by comma";run; 
+%mend; 
+/************* run the example;   
+%split_comma(test.students,work.students4,multichoice,xx); */ 
+
+
+
+
+
+************* split variable seperated by comma *************;   
+* 2 ************* output numberic type;  
+%macro split_comma_num(indata,outdata,oldname,prename); 
+data &indata.;    
+        set &indata.;
+	id=_N_;
+run;
+data tmp;                                                     
+        set &indata.;
+	id=_n_;                                         
+        i=1;                                                  
+        do while (kscan(&oldname.,i,',' )^=''); *{notice the comma is in half charecter',' or in full','} ;     
+        subname=kscan(&oldname.,i,',')+0;        
+        output;                
+        i+1;                 
+        end;                
+run;                    
+proc transpose data=tmp  out=want (drop=_name_) prefix=&prename; **if there is no (drop=_name_),then the out will contain the before variable name; 
+  var subname;           
+  by id;       *** there must be a distinct 'id';  
+run;             
+data &outdata.;   
+      merge &indata want;  
+      by id;     
+run;           
+*proc print data= &outdata.;title "splitted &oldname. by comma"; run;  
+%mend;                                      
+/************* run the example; 
+%split_comma_num(work.students4,work.students5,mcscore,xzt); 
+%split_comma_num(work.students5,test.score,itemscore,zgt);  */
+
+
+
+************* split_xls  output to dif xls files devided by the dif values of certain variable *;   
+%macro split_xls(indata, fenlei, outpath);     
+proc sql;    
+        create table temp as 
+        select distinct &fenlei. 
+        from &indata.;    
+quit;                     
+data _null_;            
+        set temp end=last; 
+        if last then call symput("numsch",_n_); 
+run;             
+%do i=1 %to (&numsch.+0);  
+data _null_;    
+        set temp ; 
+        if _n_=&i then call symput("namesch",trim(&fenlei.));  
+run;     
+************* split file *;   
+        data tmp&i.;      
+                set &indata;  
+                if &fenlei.=trim("&namesch.");
+                put "now the value of &fenlei. is &namesch.";  
+        run;                                                   
+***** output method one, use ods, have title line;  
+*ods listing close;                      
+*ods html file="&outpath.&fenlei.&namesch..html";  
+*proc print data=tmp&i. label noobs;    
+*        title "&fenlei.&namesch.";   
+*run;                                
+*ods html close; 
+*ods listing;  
+***** output method two, use outfile, have no title line; 
+PROC EXPORT DATA= tmp&i.                             
+            OUTFILE= "&outpath.&fenlei..xls"      
+            DBMS=EXCEL REPLACE;               
+     SHEET="&fenlei.&namesch.";           
+RUN;                                     
+*proc print data=tmp&i.;title "&fenlei.=&namesch.";run; 
+************* assemble files, set or merge *;   
+        %if &i.=1 %then %do;                   
+        data all;                             
+                set tmp&i.;                   
+        run;                                   
+        %end;                            
+        %else %do;                     
+        data all;                     
+                set all tmp&i.;       
+                by id;               
+        run;                          
+        %end;                         
+%end;                
+*proc print data=all;title "assembled all the &fenlei.";run; 
+%mend;                                                                                                                                        
+/* How to use:  
+%split_xls(     
+indata: the data that will be operated  ,  
+fenlei: split by this var ,filename and title will be the value in this var ,  
+outpath: output excell files to this path, must have '\' at the end      
+ );       
+************* run the example;   
+%split_xls(test.students,class, D:\sasprogram\data\  );   
+*/
+
+
+
+
+
+
+************* split_group;
+%macro split_group(indata2,totalscore);                                                                                                  
+proc sort data=&indata2;                                                                                                                
+         by descending &totalscore;     ******************************************* 按照总分排序，方便寻找高低分组界限 **;              
+run;                                                                                                                                    
+data &indata2;                                                                                                                          
+        set &indata2 end=lasttrue;                                                                                                      
+        id=_n_;                                                                                                                         
+        high=0;                                                                                                                         
+        low=0;                                                                                                                          
+        if lasttrue then call symput("num_data",id);                                                                                    
+run;                                                                                                                                    
+data  &indata2;                                                                                                                         
+        set &indata2 ;                                                                                                                  
+        if id <= int("&num_data."*0.27) then high=1;                                                                                    
+        if id >= int("&num_data."*0.73) then low=1;                                                                                     
+run;                                                                                                                                    
+data high;                                                                                                                              
+        set &indata2;                                                                                                                   
+        if high=1;        ************************ 高分组学生成绩表 **;                                                                 
+run;                                                                                                                                    
+data low;                                                                                                                               
+        set &indata2;                                                                                                                   
+        if low=1;          ************************ 低分组学生成绩表**;                                                                 
+run;                                                                                                                                    
+%mend;     

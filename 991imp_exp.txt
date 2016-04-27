@@ -1,0 +1,92 @@
+************* input csv files *************;                                                                                            
+%macro imp_csv(infile_csv, data_be_imp_csv);                                                                                            
+PROC IMPORT OUT= &data_be_imp_csv.                                                                                                      
+            DATAFILE= "&infile_csv."                                                                                                    
+            DBMS=CSV REPLACE;                                                                                                           
+     GETNAMES=YES;                                                                                                                      
+     DATAROW=2;                                                                                                                         
+RUN;                                                                                                                                    
+%mend;                                                                                                                                  
+/************* run the example;                                                                                                         
+%imp_csv(D:\sasprogram\data\students.csv, work.students3  );                                                                            
+proc print data=work.students3 ;title ".csv";run;    */                                                                                 
+                                                                                                                                        
+************* input dbf files *************;                                                                                            
+%macro imp_dbf(infile_dbf, out_data_dbf);                                                                                               
+PROC IMPORT OUT= &out_data_dbf                                                                                                          
+            DATAFILE= "&infile_dbf"                                                                                                     
+            DBMS=DBF REPLACE;                                                                                                           
+     GETDELETED=NO;                                                                                                                     
+RUN;                                                                                                                                    
+%mend;                                                                                                                                  
+/************* run the example;                                                                                                         
+%imp_dbf(D:\sasprogram\data\students.dbf, work.students2  );                                                                            
+proc print data=work.students2 ;title ".dbf";run;  */                                                                                   
+                                                                                                                                        
+************* import xls files *************;                                                                                           
+%macro imp_xls(infile_xls, insheet, outdata_xls);                                                                                       
+PROC IMPORT OUT= &outdata_xls.                                                                                                          
+            DATAFILE= "&infile_xls."                                                                                                    
+            DBMS=EXCEL REPLACE;                                                                                                         
+     SHEET="&insheet.";                                                                                                                 
+     GETNAMES=YES;                                                                                                                      
+     MIXED=NO;                                                                                                                          
+     SCANTEXT=YES;                                                                                                                      
+     USEDATE=YES;                                                                                                                       
+     SCANTIME=YES;                                                                                                                      
+RUN;                                                                                                                                    
+%mend;                                                                                                                                  
+/* How to use:                                                                                                                          
+%imp_xls(                                                                                                                               
+ infile_xls: must include ".xls", such as ""C:\USERS\shuxue.xls", not support xlsx                                                      
+ insheet: sheet name, such as "Sheet1$"                                                                                                 
+ outdata_xls: such as "work.temp"                                                                                                       
+);                                                                                                                                      
+MIXED=NO; or =YES;                                                                                                                      
+                                                                                                                                        
+************* example;                                                                                                                  
+%imp_xls(D:\sasprogram\data\students.xls, Sheet1, work.students1 );                                                                     
+proc print data=work.students1 ;title ".xls";run; */                                                                                    
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+************* output to csv files *************;                                                                                        
+%macro exp_csv(out_csv,data_be_exp_csv);                                                                                                
+PROC EXPORT DATA= &data_be_exp_csv.                                                                                                     
+            OUTFILE= "&out_csv."                                                                                                        
+            DBMS=CSV REPLACE;                                                                                                           
+RUN;                                                                                                                                    
+%mend;                                                                                                                                  
+/************* run the example;                                                                                                         
+%exp_csv(D:\sasprogram\data\students.csv, test.students );  */                                                                          
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+************* output to dbf files *************;                                                                                        
+%macro exp_dbf(outfile_dbf,data_be_exp_dbf);                                                                                            
+PROC EXPORT DATA= &data_be_exp_dbf                                                                                                      
+            OUTFILE= "&outfile_dbf"                                                                                                     
+            DBMS=DBF REPLACE;                                                                                                           
+RUN;                                                                                                                                    
+%mend;                                                                                                                                  
+/************* run the example;                                                                                                         
+%exp_dbf(D:\sasprogram\data\students.dbf, test.students );    */                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+************* export to xls files *************;                                                                                        
+%macro exp_xls(outfile_xls,outsheet,data_be_exp_xls);                                                                                   
+PROC EXPORT DATA= &data_be_exp_xls                                                                                                      
+            OUTFILE= "&outfile_xls"                                                                                                     
+            DBMS=EXCEL REPLACE;                                                                                                         
+     SHEET="&outsheet";                                                                                                                 
+RUN;                                                                                                                                    
+%mend;                                                                                                                                  
+/* How to use:                                                                                                                          
+%exp_xls(                                                                                                                               
+ outfile_xls: must include ".xls", such as ""C:\USERS\shuxue.xls", not support xlsx                                                     
+ outsheet: sheet name, such as "Sheet1$"                                                                                                
+ data_be_exp_xls: such as "work.temp"                                                                                                   
+); */                                                                                                                                   
+/*************  example;                                                                                                                
+%exp_xls(D:\sasprogram\data\students.xls, Sheet1, test.students ); */
